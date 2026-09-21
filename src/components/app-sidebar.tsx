@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
   ActivityIcon,
   FileTextIcon,
@@ -15,7 +13,7 @@ import {
   SwordsIcon,
   TriangleAlertIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -34,7 +32,11 @@ const NAV = [
 ] as const;
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = usePathname();
+  const [pathname, setPathname] = useState("/");
+  useEffect(() => {
+    setPathname(window.location.pathname);
+  }, []);
+
   return (
     <nav className="flex flex-col gap-0.5">
       {NAV.map((item) => {
@@ -44,7 +46,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             : pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;
         return (
-          <Link
+          <a
             key={item.href}
             href={item.href}
             onClick={onNavigate}
@@ -62,7 +64,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               )}
             />
             {item.label}
-          </Link>
+          </a>
         );
       })}
     </nav>
@@ -92,7 +94,7 @@ export function AppSidebar() {
           <NavLinks />
         </div>
         <div className="border-t border-[var(--line)] p-3 text-[11px] leading-relaxed text-muted-foreground">
-          Local-first · Demo-Connectoren · keine Cloud-Pflicht
+          Astro · npm run dev · self-host ready
         </div>
       </aside>
 
