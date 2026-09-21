@@ -3,6 +3,7 @@ import { analyzeContentInput, runHomepageAudit } from "@/lib/analyzers";
 import { resolveApiKeys } from "@/lib/connectors/keys";
 import { refreshGeoPrompt, type GeoRefreshResult } from "@/lib/connectors/openai-geo";
 import { refreshKeywordPosition } from "@/lib/connectors/serp";
+import { parseGscLinksCsv } from "@/lib/gsc-links-csv";
 import { daysAgo } from "@/lib/seed";
 import { emptyDomainBundle, formatHost } from "@/lib/selectors";
 import { STARTPLATZ_KEYWORDS } from "@/lib/startplatz-keywords";
@@ -43,6 +44,7 @@ type ActionBody =
   | { action: "refreshKeywords"; domainId: string }
   | { action: "analyzeContent"; domainId: string; source: string; text: string }
   | { action: "importBacklinks"; domainId: string; items: unknown[] }
+  | { action: "importGscCsv"; domainId: string; csv: string }
   | { action: "addGeoPrompt"; domainId: string; prompt: string; engine?: string }
   | { action: "refreshGeo"; domainId: string }
   | { action: "addCompetitor"; domainId: string; hostname: string; label?: string }
@@ -310,6 +312,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
 
       case "importBacklinks": {
+        let imported = 0;
         const state = await updateState((s) => {
           for (const raw of body.items) {
             const item = raw as Record<string, unknown>;
@@ -326,11 +329,40 @@ export const POST: APIRoute = async ({ request }) => {
               lastSeen: String(item.lastSeen || new Date().toISOString().slice(0, 10)),
               status: (item.status as "active" | "new" | "lost") || "new",
             });
+            imported++;
           }
         });
         return jsonResponse({
           ...state,
-          _meta: { mode: "manual", note: "Backlinks importiert (manuell / JSON)." },
+          _meta: { mode: "manual", note: `${imported} Backlinks importiert (JSON).`, imported },
+        });
+      }
+
+      case "importGscCsv": {
+        const rows = parseGscLinksCsv(body.csv || "");
+        if (!rows.length) {
+          return actionError(
+            "Keine Zeilen erkannt. Erwarte GSC-Export (Latest links / Top linking sites) mit Spalten wie Linking page / Site."
+          );
+        }
+        const state = await updateState((s) => {
+          // Replace existing for this domain with GSC snapshot (clear + import)
+          s.backlinks = s.backlinks.filter((b) => b.domainId !== body.domainId);
+          for (const row of rows) {
+            s.backlinks.push({
+              id: uid("bl"),
+              domainId: body.domainId,
+              ...row,
+            });
+          }
+        });
+        return jsonResponse({
+          ...state,
+          _meta: {
+            mode: "manual",
+            note: `${rows.length} GSC-Links importiert (kein DR — Score ist nur Proxy).`,
+            imported: rows.length,
+          },
         });
       }
 
