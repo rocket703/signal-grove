@@ -11,7 +11,8 @@
     "build": "astro build",
     "preview": "astro preview --host 0.0.0.0 --port ${PORT:-43127}",
     "start": "HOST=0.0.0.0 PORT=${PORT:-43127} node ./dist/server/entry.mjs",
-    "astro": "astro"
+    "astro": "astro",
+    "keywords:seed": "node scripts/add-startplatz-keywords.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^11.1.6",

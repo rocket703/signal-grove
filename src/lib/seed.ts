@@ -38,38 +38,25 @@ function emptyGeoSeries(): GeoSeriesPoint[] {
 export const DEMO_ID = "dom_startplatzboerse";
 
 const seedKeywords: Keyword[] = [
-  {
-    id: "kw_1",
-    domainId: DEMO_ID,
-    term: "startplatzbörse",
-    locale: "de-DE",
-    volume: 320,
-    history: [],
-  },
-  {
-    id: "kw_2",
-    domainId: DEMO_ID,
-    term: "marathon startplatz verkaufen",
-    locale: "de-DE",
-    volume: 590,
-    history: [],
-  },
-  {
-    id: "kw_3",
-    domainId: DEMO_ID,
-    term: "triathlon startplatz kaufen",
-    locale: "de-DE",
-    volume: 480,
-    history: [],
-  },
-  {
-    id: "kw_4",
-    domainId: DEMO_ID,
-    term: "hyrox startplatz",
-    locale: "de-DE",
-    volume: 720,
-    history: [],
-  },
+  { id: "kw_1", domainId: DEMO_ID, term: "startplatzbörse", locale: "de-DE", volume: 320, history: [] },
+  { id: "kw_2", domainId: DEMO_ID, term: "marathon startplatz verkaufen", locale: "de-DE", volume: 590, history: [] },
+  { id: "kw_3", domainId: DEMO_ID, term: "triathlon startplatz kaufen", locale: "de-DE", volume: 480, history: [] },
+  { id: "kw_4", domainId: DEMO_ID, term: "hyrox startplatz", locale: "de-DE", volume: 720, history: [] },
+  { id: "kw_5", domainId: DEMO_ID, term: "startplatz kaufen", locale: "de-DE", volume: 880, history: [] },
+  { id: "kw_6", domainId: DEMO_ID, term: "startplatz verkaufen", locale: "de-DE", volume: 720, history: [] },
+  { id: "kw_7", domainId: DEMO_ID, term: "marathon startplatz kaufen", locale: "de-DE", volume: 640, history: [] },
+  { id: "kw_8", domainId: DEMO_ID, term: "berlin marathon startplatz", locale: "de-DE", volume: 1100, history: [] },
+  { id: "kw_9", domainId: DEMO_ID, term: "frankfurt marathon startplatz", locale: "de-DE", volume: 540, history: [] },
+  { id: "kw_10", domainId: DEMO_ID, term: "ironman startplatz verkaufen", locale: "de-DE", volume: 390, history: [] },
+  { id: "kw_11", domainId: DEMO_ID, term: "triathlon startplatz verkaufen", locale: "de-DE", volume: 410, history: [] },
+  { id: "kw_12", domainId: DEMO_ID, term: "radrennen startplatz", locale: "de-DE", volume: 260, history: [] },
+  { id: "kw_13", domainId: DEMO_ID, term: "halbmarathon startplatz", locale: "de-DE", volume: 480, history: [] },
+  { id: "kw_14", domainId: DEMO_ID, term: "ultramarathon startplatz", locale: "de-DE", volume: 210, history: [] },
+  { id: "kw_15", domainId: DEMO_ID, term: "hyrox startplatz kaufen", locale: "de-DE", volume: 610, history: [] },
+  { id: "kw_16", domainId: DEMO_ID, term: "hyrox startplatz verkaufen", locale: "de-DE", volume: 450, history: [] },
+  { id: "kw_17", domainId: DEMO_ID, term: "startplatz tausch", locale: "de-DE", volume: 300, history: [] },
+  { id: "kw_18", domainId: DEMO_ID, term: "startplatzbörse marathon", locale: "de-DE", volume: 180, history: [] },
+  { id: "kw_19", domainId: DEMO_ID, term: "startplatz inserieren", locale: "de-DE", volume: 170, history: [] },
 ];
 
 const seedGeoPrompts: GeoPrompt[] = [
