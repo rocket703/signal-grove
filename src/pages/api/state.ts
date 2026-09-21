@@ -5,6 +5,7 @@ import { refreshGeoPrompt, type GeoRefreshResult } from "@/lib/connectors/openai
 import { refreshKeywordPosition } from "@/lib/connectors/serp";
 import { daysAgo } from "@/lib/seed";
 import { emptyDomainBundle, formatHost } from "@/lib/selectors";
+import { STARTPLATZ_KEYWORDS } from "@/lib/startplatz-keywords";
 import { readState, resetDemoData, uid, updateState, writeState } from "@/lib/store";
 import type { AppState, Competitor, Keyword } from "@/lib/types";
 
