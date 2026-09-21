@@ -39,6 +39,7 @@ type ActionBody =
   | { action: "removeDomain"; domainId: string }
   | { action: "runAudit"; domainId: string }
   | { action: "addKeyword"; domainId: string; term: string; locale?: string }
+  | { action: "seedKeywords"; domainId: string; terms?: string[] }
   | { action: "refreshKeywords"; domainId: string }
   | { action: "analyzeContent"; domainId: string; source: string; text: string }
   | { action: "importBacklinks"; domainId: string; items: unknown[] }
@@ -180,15 +181,55 @@ export const POST: APIRoute = async ({ request }) => {
           return actionError("Keyword fehlt");
         }
         const state = await updateState((s) => {
-          s.keywords.push({
-            id: uid("kw"),
-            domainId: body.domainId,
-            term,
-            locale: body.locale || "de-DE",
-            history: [],
-          });
+          const exists = s.keywords.some(
+            (k) => k.domainId === body.domainId && k.term === term
+          );
+          if (!exists) {
+            s.keywords.push({
+              id: uid("kw"),
+              domainId: body.domainId,
+              term,
+              locale: body.locale || "de-DE",
+              history: [],
+            });
+          }
         });
         return jsonResponse(state);
+      }
+
+      case "seedKeywords": {
+        const terms = (body.terms?.length ? body.terms : STARTPLATZ_KEYWORDS)
+          .map((t) => t.trim().toLowerCase())
+          .filter(Boolean);
+        let added = 0;
+        const state = await updateState((s) => {
+          const existing = new Set(
+            s.keywords
+              .filter((k) => k.domainId === body.domainId)
+              .map((k) => k.term.toLowerCase())
+          );
+          for (const term of terms) {
+            if (existing.has(term)) continue;
+            s.keywords.push({
+              id: uid("kw"),
+              domainId: body.domainId,
+              term,
+              locale: "de-DE",
+              history: [],
+            });
+            existing.add(term);
+            added++;
+          }
+        });
+        return jsonResponse({
+          ...state,
+          _meta: {
+            mode: "live",
+            note: `${added} Keywords hinzugefügt (${terms.length} in Liste).`,
+            added,
+            total: terms.length,
+          },
+        });
       }
 
       case "refreshKeywords": {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Sparkline } from "@/components/sparkline";
 import {
@@ -31,6 +31,15 @@ export default function KeywordsPage() {
   const { state, loading, error, reload, run, refreshing } = useStore();
   const [term, setTerm] = useState("");
 
+  // Seed-Skript / andere Tabs schreiben in store.json — UI neu laden
+  useEffect(() => {
+    const onFocus = () => {
+      void reload();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [reload]);
+
   if (loading) return <LoadingBlock />;
   if (error) return <ErrorBanner message={error} onRetry={() => void reload()} />;
   if (!state) return null;
@@ -51,23 +60,47 @@ export default function KeywordsPage() {
     <div className="animate-rise space-y-5">
       <PageHeader
         title="Keyword / Ranking Tracker"
-        description="Positionen über Zeit. Live via SerpAPI wenn Key gesetzt — sonst ehrlicher Demo/Mock-Modus."
+        description={`${keywords.length} Keywords für ${domain.hostname}. Live via SerpAPI wenn Key gesetzt — sonst Demo/Mock.`}
         actions={
-          <Button
-            variant="outline"
-            disabled={refreshing || !keywords.length}
-            onClick={() => {
-              void run({ action: "refreshKeywords", domainId: domain.id }).then((r) => {
-                if (r.state) {
-                  const mode = r.meta?.mode || "mock";
-                  if (mode === "live") toast.success(r.meta?.note || "Live-SERP aktualisiert");
-                  else toast.message(r.meta?.note || "Demo/Mock-Refresh (kein Live-SERP)");
-                }
-              });
-            }}
-          >
-            SERP Refresh
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              disabled={refreshing}
+              onClick={() => {
+                void reload().then(() => toast.message("Liste aktualisiert"));
+              }}
+            >
+              Neu laden
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={refreshing}
+              onClick={() => {
+                void run({ action: "seedKeywords", domainId: domain.id }).then((r) => {
+                  if (r.state) {
+                    toast.success(r.meta?.note || "Keywords geladen");
+                  }
+                });
+              }}
+            >
+              Startplatz-Keywords laden
+            </Button>
+            <Button
+              variant="outline"
+              disabled={refreshing || !keywords.length}
+              onClick={() => {
+                void run({ action: "refreshKeywords", domainId: domain.id }).then((r) => {
+                  if (r.state) {
+                    const mode = r.meta?.mode || "mock";
+                    if (mode === "live") toast.success(r.meta?.note || "Live-SERP aktualisiert");
+                    else toast.message(r.meta?.note || "Demo/Mock-Refresh (kein Live-SERP)");
+                  }
+                });
+              }}
+            >
+              SERP Refresh
+            </Button>
+          </>
         }
       />
 
@@ -85,7 +118,7 @@ export default function KeywordsPage() {
           }}
         >
           <Input
-            placeholder="z. B. geo agentur deutschland"
+            placeholder="z. B. berlin marathon startplatz"
             value={term}
             onChange={(e) => setTerm(e.target.value)}
           />
@@ -98,10 +131,22 @@ export default function KeywordsPage() {
       {keywords.length === 0 ? (
         <EmptyState
           title="Keine Keywords"
-          description="Füge den ersten Suchbegriff hinzu — wir seeden eine kurze Historie, damit Charts sofort funktionieren."
+          description="Klicke „Startplatz-Keywords laden“ oder füge Begriffe manuell hinzu."
+          action={
+            <Button
+              disabled={refreshing}
+              onClick={() => {
+                void run({ action: "seedKeywords", domainId: domain.id }).then((r) => {
+                  if (r.state) toast.success(r.meta?.note || "Keywords geladen");
+                });
+              }}
+            >
+              Startplatz-Keywords laden
+            </Button>
+          }
         />
       ) : (
-        <Panel title="Rankings">
+        <Panel title={`Rankings (${keywords.length})`}>
           <Table>
             <TableHeader>
               <TableRow>
