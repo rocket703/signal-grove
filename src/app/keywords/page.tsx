@@ -40,7 +40,7 @@ export default function KeywordsPage() {
     return (
       <EmptyState
         title="Keywords brauchen eine Domain"
-        description="Tracke Suchbegriffe mit Positionsverlauf — Mock-SERP-Refresh funktioniert offline."
+        description="Tracke Suchbegriffe mit Positionsverlauf. Mit SERPAPI_KEY: Live-SERP. Ohne Key: klar gekennzeichnetes Demo/Mock."
       />
     );
   }
@@ -51,14 +51,18 @@ export default function KeywordsPage() {
     <div className="animate-rise space-y-5">
       <PageHeader
         title="Keyword / Ranking Tracker"
-        description="Positionen über Zeit. Refresh nutzt Mock-SERP (oder SERPAPI_KEY Stub, wenn gesetzt)."
+        description="Positionen über Zeit. Live via SerpAPI wenn Key gesetzt — sonst ehrlicher Demo/Mock-Modus."
         actions={
           <Button
             variant="outline"
             disabled={refreshing || !keywords.length}
             onClick={() => {
-              void run({ action: "refreshKeywords", domainId: domain.id }).then((s) => {
-                if (s) toast.success("Rankings aktualisiert (Mock)");
+              void run({ action: "refreshKeywords", domainId: domain.id }).then((r) => {
+                if (r.state) {
+                  const mode = r.meta?.mode || "mock";
+                  if (mode === "live") toast.success(r.meta?.note || "Live-SERP aktualisiert");
+                  else toast.message(r.meta?.note || "Demo/Mock-Refresh (kein Live-SERP)");
+                }
               });
             }}
           >
@@ -72,8 +76,8 @@ export default function KeywordsPage() {
           className="flex flex-col gap-2 sm:flex-row"
           onSubmit={(e) => {
             e.preventDefault();
-            void run({ action: "addKeyword", domainId: domain.id, term }).then((s) => {
-              if (s) {
+            void run({ action: "addKeyword", domainId: domain.id, term }).then((r) => {
+              if (r.state) {
                 toast.success(`„${term}“ getrackt`);
                 setTerm("");
               }

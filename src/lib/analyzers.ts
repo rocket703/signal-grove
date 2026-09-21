@@ -1,10 +1,21 @@
 import type { AuditCheck, AuditResult, ContentInsight } from "./types";
+import { fetchPageSpeedScore } from "./connectors/pagespeed";
 import { uid } from "./store";
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
 
 function extractTag(html: string, tag: string): string | undefined {
   const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
   const m = html.match(re);
-  return m?.[1]?.replace(/<[^>]+>/g, "").trim();
+  return m?.[1] ? decodeEntities(m[1].replace(/<[^>]+>/g, "").trim()) : undefined;
 }
 
 function metaContent(html: string, name: string): string | undefined {
@@ -13,7 +24,8 @@ function metaContent(html: string, name: string): string | undefined {
     "i"
   );
   const m = html.match(re);
-  return (m?.[1] || m?.[2])?.trim();
+  const raw = m?.[1] || m?.[2];
+  return raw ? decodeEntities(raw.trim()) : undefined;
 }
 
 function countTags(html: string, tag: string): number {
@@ -21,77 +33,91 @@ function countTags(html: string, tag: string): number {
   return (html.match(re) || []).length;
 }
 
+function htmlToText(html: string): string {
+  return decodeEntities(
+    html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
+export async function fetchHtml(url: string): Promise<{
+  ok: boolean;
+  html: string;
+  loadMs?: number;
+  status?: number;
+  error?: string;
+  finalUrl?: string;
+}> {
+  try {
+    const start = Date.now();
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(12000),
+      headers: {
+        "User-Agent":
+          "SignalGroveBot/1.0 (+https://github.com; SEO audit; contact local operator)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+      redirect: "follow",
+    });
+    const loadMs = Date.now() - start;
+    const html = await res.text();
+    return {
+      ok: res.ok,
+      html,
+      loadMs,
+      status: res.status,
+      finalUrl: res.url,
+      error: res.ok ? undefined : `HTTP ${res.status}`,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      html: "",
+      error: e instanceof Error ? e.message : "Fetch fehlgeschlagen",
+    };
+  }
+}
+
 export async function runHomepageAudit(
   domainId: string,
-  hostname: string
+  hostname: string,
+  pagespeedKey?: string
 ): Promise<AuditResult> {
   const url = `https://${hostname.replace(/^https?:\/\//, "").replace(/\/$/, "")}/`;
   const checks: AuditCheck[] = [];
-  let html = "";
-  let loadMs: number | undefined;
-  let fetched = false;
+  const fetched = await fetchHtml(url);
 
-  try {
-    const start = Date.now();
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: { "User-Agent": "SeoGeoTracker/1.0 (+local)" },
-      redirect: "follow",
+  if (!fetched.ok) {
+    checks.push({
+      id: "fetch",
+      category: "Technisch",
+      title: "Homepage erreichbar",
+      severity: "critical",
+      status: "fail",
+      detail: `Live-Fetch von ${url} fehlgeschlagen: ${fetched.error || "unbekannt"}. Kein Simuliertes Ergebnis.`,
+      fixHint: "DNS, HTTPS und Firewall prüfen; Audit erneut starten.",
     });
-    clearTimeout(timer);
-    loadMs = Date.now() - start;
-    if (res.ok) {
-      html = await res.text();
-      fetched = true;
-    }
-  } catch {
-    fetched = false;
-  }
-
-  if (!fetched) {
-    // Offline / blocked: generate a plausible simulated audit
-    checks.push(
-      {
-        id: "fetch",
-        category: "Technisch",
-        title: "Homepage erreichbar",
-        severity: "warning",
-        status: "warn",
-        detail: `Live-Fetch von ${url} nicht möglich — Simulierter Audit aktiv.`,
-        fixHint:
-          "Netzwerkzugriff prüfen oder Demo-Modus nutzen. Später: eigener Crawler-Connector.",
-      },
-      {
-        id: "title",
-        category: "On-Page",
-        title: "Title-Tag",
-        severity: "info",
-        status: "skip",
-        detail: "Kein HTML geladen — Check übersprungen.",
-        fixHint: "Nach erfolgreichem Fetch erneut prüfen.",
-      },
-      {
-        id: "https",
-        category: "Technisch",
-        title: "HTTPS angenommen",
-        severity: "ok",
-        status: "pass",
-        detail: "URL verwendet https:// Schema.",
-        fixHint: "Zertifikat und Redirects manuell verifizieren.",
-      }
-    );
     return {
       domainId,
       ranAt: new Date().toISOString(),
-      score: 55,
+      score: 10,
       url,
       checks,
-      meta: { h1Count: 0, robotsTxt: false, sitemapHint: false, loadMs },
+      meta: {
+        h1Count: 0,
+        robotsTxt: false,
+        sitemapHint: false,
+        loadMs: fetched.loadMs,
+      },
     };
   }
 
+  const html = fetched.html;
+  const loadMs = fetched.loadMs;
   const title = extractTag(html, "title");
   const description = metaContent(html, "description");
   const canonical =
@@ -101,16 +127,27 @@ export async function runHomepageAudit(
   const ogImage = metaContent(html, "og:image");
   const h1Count = countTags(html, "h1");
 
+  checks.push({
+    id: "fetch",
+    category: "Technisch",
+    title: "Live-Fetch",
+    severity: "ok",
+    status: "pass",
+    detail: `HTML geladen (${html.length} Bytes${loadMs ? `, ${loadMs} ms` : ""}) von ${fetched.finalUrl || url}`,
+    fixHint: "Keine Änderung nötig.",
+  });
+
   let robotsTxt = false;
   let sitemapHint = false;
   try {
     const robotsRes = await fetch(new URL("/robots.txt", url).toString(), {
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(8000),
+      headers: { "User-Agent": "SignalGroveBot/1.0" },
     });
     if (robotsRes.ok) {
       robotsTxt = true;
       const body = await robotsRes.text();
-      sitemapHint = /sitemap:/i.test(body);
+      sitemapHint = /sitemap:\s*\S+/i.test(body);
     }
   } catch {
     robotsTxt = false;
@@ -141,7 +178,7 @@ export async function runHomepageAudit(
         : "warn"
       : "fail",
     detail: description
-      ? `${description.length} Zeichen`
+      ? `„${description.slice(0, 120)}${description.length > 120 ? "…" : ""}“ (${description.length} Zeichen)`
       : "Keine Meta-Description.",
     fixHint: "140–160 Zeichen mit klarem CTA und Nutzenversprechen.",
   });
@@ -185,7 +222,7 @@ export async function runHomepageAudit(
     detail: sitemapHint
       ? "Sitemap-Hinweis gefunden."
       : "Kein Sitemap-Eintrag in robots.txt.",
-    fixHint: "Sitemap: https://example.com/sitemap.xml ergänzen.",
+    fixHint: `Sitemap: https://${hostname}/sitemap.xml in robots.txt ergänzen.`,
   });
 
   checks.push({
@@ -198,15 +235,41 @@ export async function runHomepageAudit(
     fixHint: "og:title und og:image (1200×630) setzen.",
   });
 
-  checks.push({
-    id: "perf",
-    category: "Performance",
-    title: "Ladezeit-Proxy",
-    severity: !loadMs ? "info" : loadMs < 600 ? "ok" : loadMs < 1200 ? "warning" : "critical",
-    status: !loadMs ? "skip" : loadMs < 600 ? "pass" : "warn",
-    detail: loadMs ? `Antwort in ~${loadMs} ms` : "Nicht gemessen",
-    fixHint: "TTFB senken; später PageSpeed API (PAGESPEED_API_KEY) anbinden.",
-  });
+  if (pagespeedKey) {
+    const psi = await fetchPageSpeedScore({ apiKey: pagespeedKey, url });
+    if (psi?.score != null) {
+      const score = psi.score;
+      checks.push({
+        id: "perf",
+        category: "Performance",
+        title: "PageSpeed Insights",
+        severity: score >= 90 ? "ok" : score >= 50 ? "warning" : "critical",
+        status: score >= 90 ? "pass" : "warn",
+        detail: psi.detail,
+        fixHint: "Core Web Vitals und LCP/INP verbessern.",
+      });
+    } else {
+      checks.push({
+        id: "perf",
+        category: "Performance",
+        title: "Ladezeit-Proxy (Fetch)",
+        severity: !loadMs ? "info" : loadMs < 600 ? "ok" : loadMs < 1200 ? "warning" : "critical",
+        status: !loadMs ? "skip" : loadMs < 600 ? "pass" : "warn",
+        detail: `PageSpeed API fehlgeschlagen — Fetch-TTFB ~${loadMs ?? "?"} ms`,
+        fixHint: "PAGESPEED_API_KEY und Quota prüfen.",
+      });
+    }
+  } else {
+    checks.push({
+      id: "perf",
+      category: "Performance",
+      title: "Ladezeit-Proxy (Fetch)",
+      severity: !loadMs ? "info" : loadMs < 600 ? "ok" : loadMs < 1200 ? "warning" : "critical",
+      status: !loadMs ? "skip" : loadMs < 600 ? "pass" : "warn",
+      detail: loadMs ? `Server-Antwort in ~${loadMs} ms (kein PageSpeed-Key)` : "Nicht gemessen",
+      fixHint: "Optional PAGESPEED_API_KEY setzen für Lighthouse-Score.",
+    });
+  }
 
   const scoreWeights: Record<string, number> = {
     pass: 100,
@@ -237,6 +300,48 @@ export async function runHomepageAudit(
   };
 }
 
+export async function analyzeContentInput(
+  domainId: string,
+  source: string,
+  text: string
+): Promise<ContentInsight> {
+  let body = text.trim();
+  let resolvedSource = source.trim() || "paste";
+
+  const looksLikeUrl = /^https?:\/\//i.test(resolvedSource) || /^https?:\/\//i.test(body);
+  if (!body && /^https?:\/\//i.test(resolvedSource)) {
+    const fetched = await fetchHtml(resolvedSource);
+    if (!fetched.ok) {
+      return {
+        id: uid("ci"),
+        domainId,
+        source: resolvedSource,
+        createdAt: new Date().toISOString(),
+        wordCount: 0,
+        titleLength: 0,
+        metaLength: 0,
+        h1Count: 0,
+        h2Count: 0,
+        keywordDensity: 0,
+        readabilityScore: 0,
+        issues: [`Live-Fetch fehlgeschlagen: ${fetched.error || "unbekannt"}`],
+        strengths: [],
+      };
+    }
+    const title = extractTag(fetched.html, "title") || resolvedSource;
+    body = `${title}\n\n${htmlToText(fetched.html)}`;
+  } else if (looksLikeUrl && /^https?:\/\//i.test(body) && body.split(/\s+/).length <= 2) {
+    resolvedSource = body;
+    const fetched = await fetchHtml(body);
+    if (fetched.ok) {
+      const title = extractTag(fetched.html, "title") || body;
+      body = `${title}\n\n${htmlToText(fetched.html)}`;
+    }
+  }
+
+  return analyzeContent(domainId, resolvedSource, body);
+}
+
 export function analyzeContent(
   domainId: string,
   source: string,
@@ -257,9 +362,9 @@ export function analyzeContent(
     )
   );
 
-  const titleMatch = text.match(/^#\s+(.+)$/m) || text.match(/title[:\s]+(.+)/i);
-  const title = titleMatch?.[1]?.trim() || source.slice(0, 60);
-  const h1Count = (text.match(/^#\s+/gm) || []).length || (/"h1"/gi.test(text) ? 1 : 0);
+  const titleMatch = text.match(/^#\s+(.+)$/m) || text.match(/^(.+)$/m);
+  const title = titleMatch?.[1]?.trim().slice(0, 80) || source.slice(0, 60);
+  const h1Count = (text.match(/^#\s+/gm) || []).length;
   const h2Count = (text.match(/^##\s+/gm) || []).length;
   const keyword = words[0]?.toLowerCase() || "";
   const density =
@@ -282,8 +387,9 @@ export function analyzeContent(
   else strengths.push("Titel-Länge wirkt ausgewogen.");
   if (readability < 55) issues.push("Lesbarkeit eher schwer — Sätze kürzen.");
   else strengths.push("Lesbarkeit im guten Bereich.");
-  if (h2Count < 2) issues.push("Wenige Zwischenüberschriften — Struktur stärken.");
-  else strengths.push("Gute Zwischenüberschriften-Struktur.");
+  if (h2Count < 2 && wordCount > 400)
+    issues.push("Wenige Zwischenüberschriften — Struktur stärken.");
+  else if (h2Count >= 2) strengths.push("Gute Zwischenüberschriften-Struktur.");
 
   return {
     id: uid("ci"),
@@ -293,7 +399,7 @@ export function analyzeContent(
     wordCount,
     titleLength: title.length,
     metaLength: Math.min(160, Math.round(wordCount / 8)),
-    h1Count: Math.max(h1Count, 1),
+    h1Count: Math.max(h1Count, title ? 1 : 0),
     h2Count,
     keywordDensity: density,
     readabilityScore: readability,
@@ -327,7 +433,12 @@ export function mockGeoRefresh(prompt: {
   return {
     citationLikelihood: likelihood,
     cited,
-    mentionRank: cited ? Math.max(1, Math.min(5, (prompt.mentionRank ?? 3) + Math.round((Math.random() - 0.5) * 2))) : null,
+    mentionRank: cited
+      ? Math.max(
+          1,
+          Math.min(5, (prompt.mentionRank ?? 3) + Math.round((Math.random() - 0.5) * 2))
+        )
+      : null,
     lastChecked: new Date().toISOString().slice(0, 10),
   };
 }

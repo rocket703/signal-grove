@@ -93,7 +93,7 @@ export function buildMarkdownReport(state: AppState): string {
   lines.push(
     "",
     "---",
-    "_Erzeugt mit Local SEO + GEO Tracker. Daten lokal persistiert; SERP/GEO-Refresh im Mock-Modus sofern keine Provider-Keys gesetzt._"
+    "_Erzeugt mit Signal Grove. Audit/Content immer live (HTTP). SERP/GEO live nur mit Provider-Keys — sonst ehrlich als Mock gekennzeichnet. Backlinks nur Import/manuell._"
   );
 
   return lines.join("\n");

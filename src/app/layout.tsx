@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ConnectorBadge } from "@/components/connector-badge";
 import { DomainSwitcher } from "@/components/domain-switcher";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -47,10 +48,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <div className="flex min-w-0 flex-1 flex-col">
                   <header className="sticky top-0 z-30 hidden items-center justify-between gap-3 border-b border-[var(--line)] bg-[var(--panel)]/85 px-6 py-3 backdrop-blur-md lg:flex">
                     <DomainSwitcher />
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="signal-dot inline-block size-2 rounded-full bg-[var(--signal)]" />
-                      Lokal · Mock-Connectoren bereit
-                    </div>
+                    <ConnectorBadge />
                   </header>
                   <div className="border-b border-[var(--line)] bg-[var(--panel)]/70 px-3 py-2 lg:hidden">
                     <DomainSwitcher />

@@ -41,7 +41,7 @@ export function DomainSwitcher() {
       hostname,
       displayName: name || undefined,
     });
-    if (next) {
+    if (next.state) {
       toast.success(`${hostname} hinzugefügt`);
       setHostname("");
       setName("");
@@ -80,8 +80,8 @@ export function DomainSwitcher() {
             <DropdownMenuItem
               className="text-destructive"
               onClick={() => {
-                void run({ action: "removeDomain", domainId: active.id }).then((s) => {
-                  if (s) toast.message("Domain entfernt");
+                void run({ action: "removeDomain", domainId: active.id }).then((r) => {
+                  if (r.state) toast.message("Domain entfernt");
                 });
               }}
             >

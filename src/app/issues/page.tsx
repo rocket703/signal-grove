@@ -102,8 +102,8 @@ export default function IssuesPage() {
   const done = issues.filter((i) => i.status !== "open");
 
   function onUpdate(issueId: string, status: "open" | "done" | "dismissed") {
-    void run({ action: "updateIssue", issueId, status }).then((s) => {
-      if (s && status === "done") toast.success("Als erledigt markiert");
+    void run({ action: "updateIssue", issueId, status }).then((r) => {
+      if (r.state && status === "done") toast.success("Als erledigt markiert");
     });
   }
 

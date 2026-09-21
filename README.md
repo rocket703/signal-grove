@@ -1,63 +1,89 @@
 # Signal Grove — SEO + GEO Tracker
 
-Local-first Domain-Workspace für **klassisches SEO** und **Generative Engine Optimization (GEO)**. Eine Domain hinzufügen, Health-Score und Trends sehen, technische Audits, Keyword-Rankings, Content-Insights, Backlinks, AI-Visibility, Competitors, Issues und Reports — alles mit lokaler Persistenz.
+Self-hostable Domain-Workspace für **klassisches SEO** und **Generative Engine Optimization (GEO)**.  
+Seed-Domain: **startplatzboerse.com**. Persistenz lokal als JSON.
 
-## Stack
+## Was ist live vs. braucht Keys
 
-- Next.js (App Router) · TypeScript · Tailwind CSS · shadcn/ui
-- Persistenz: JSON-Datei unter `data/store.json` (override via `SEOGEO_DATA_DIR`)
-- Keine Auth, keine bezahlten APIs nötig — Mock/Demo-Connectoren mit klaren Extension Points
+| Bereich | Ohne Key | Mit Key / immer |
+|--------|----------|-----------------|
+| Technical Audit | — | **Immer live** HTTP-Fetch (Title, Meta, robots, Canonical, OG, …) |
+| Content Insights | — | **Live** Paste oder URL-Fetch + lokale Analyse |
+| Keywords / SERP | Demo/Mock, klar gelabelt | **Live** mit `SERPAPI_KEY` |
+| GEO / AI Visibility | Demo/Mock, klar gelabelt | **Live** mit `OPENAI_API_KEY` |
+| PageSpeed im Audit | Fetch-TTFB-Proxy | **Live** mit `PAGESPEED_API_KEY` |
+| Backlinks | — | **Nur manuell / JSON-Import** (kein Fake-Live) |
 
-## Starten
+## Lokal starten
 
 ```bash
+cp .env.example .env   # Keys optional eintragen
 npm install
 npm run dev
 ```
 
-App: [http://127.0.0.1:43127](http://127.0.0.1:43127)
+App: [http://127.0.0.1:43127](http://127.0.0.1:43127) (bindet auf `0.0.0.0`, Port via `PORT`).
 
-Production:
+Production ohne Docker:
 
 ```bash
 npm run build
 npm start
 ```
 
-## Was steckt drin
+## Docker (VPS / Self-host)
 
-| Bereich | Funktion |
-|--------|----------|
-| Domain Workspace | Domains anlegen, aktiv setzen, entfernen |
-| Overview | Health Score, Sparklines, SEO vs GEO, Top Issues |
-| Audit | Homepage-Check (Live-Fetch oder Simulation): robots, title, meta, H1, canonical, OG, Sitemap-Hinweis, Ladezeit-Proxy |
-| Keywords | Tracking inkl. Historie; Mock-SERP-Refresh aktualisiert Charts offline |
-| Content | Text/URL-Analyse: Länge, Struktur, Lesbarkeit |
-| Backlinks | DR-ähnliche Scores, new/lost, JSON-Import |
-| GEO | Prompt Library, Citation Likelihood, Share of AI Answer, Competitor-Mentions |
-| Competitors | 2–4 Wettbewerber vergleichen |
-| Issues | Priorisierte SEO+GEO-Empfehlungen |
-| Reports | Markdown-Download oder druckbares HTML |
-| Settings | Datenpfad, Demo reset, API-Key-Stubs, GSC-Stub |
+```bash
+cp .env.example .env
+# SERPAPI_KEY / OPENAI_API_KEY optional setzen
+docker compose up -d --build
+```
 
-Beim ersten Start wird die Demo-Domain **nordlicht.digital** geseedet.
+- App: `http://<server>:43127`
+- Datenvolumen: `signal_grove_data` → `/data/store.json` im Container
+- Port ändern: `PORT=8080 docker compose up -d`
 
-## Optionale Env Vars (später Live)
+Nur Image bauen:
+
+```bash
+docker build -t signal-grove .
+docker run --rm -p 43127:43127 \
+  -e DATA_DIR=/data \
+  -v signal_grove_data:/data \
+  -e SERPAPI_KEY -e OPENAI_API_KEY -e PAGESPEED_API_KEY \
+  signal-grove
+```
+
+## Env Vars
 
 | Variable | Zweck |
 |----------|--------|
-| `SEOGEO_DATA_DIR` | Anderes Datenverzeichnis |
-| `SERPAPI_KEY` | Extension Point für echte SERP-Connectoren (derzeit Mock-Refresh) |
-| `OPENAI_API_KEY` | Extension Point für GEO-Probes (derzeit Mock-Refresh) |
-| `PAGESPEED_API_KEY` | Extension Point für echte Performance-Messung |
+| `PORT` | HTTP-Port (default `43127`) |
+| `DATA_DIR` | Verzeichnis für `store.json` (Docker: `/data`) |
+| `SEOGEO_DATA_DIR` | Alias für `DATA_DIR` |
+| `SERPAPI_KEY` | Live Google Organic Rankings |
+| `OPENAI_API_KEY` | Live GEO prompt/citation checks |
+| `OPENAI_BASE_URL` | Optional OpenAI-kompatibler Endpoint |
+| `OPENAI_MODEL` | Default `gpt-4o-mini` |
+| `PAGESPEED_API_KEY` | Optional Lighthouse Performance im Audit |
 
-Keys können auch unter **Settings** lokal vermerkt werden; ohne Keys läuft die App vollständig im Mock/Demo-Modus.
+Keys können auch unter **Settings** gespeichert werden; **Env hat Vorrang**.
 
-## Daten
+## GitHub / Deploy
 
-- Store-Datei: `data/store.json` (wird automatisch angelegt)
-- „Demo-Daten zurücksetzen“ in Settings stellt den Seed wieder her
+Dieses Projekt startete als Cursor Cloud `agent_temp`-Repo (kein Draft-PR möglich). Branch: `cursor/seo-geo-tracker-d857`.
 
-## Lizenz
+Auf GitHub bringen (auf deiner Maschine mit `gh` Auth):
 
-Privat / Projektnutzung.
+```bash
+# Option A: neues Repo erstellen und pushen
+gh repo create signal-grove --private --source=. --remote=github --push
+
+# Option B: bestehendes leeres Repo
+git remote add github git@github.com:<USER>/signal-grove.git
+git push -u github cursor/seo-geo-tracker-d857:main
+```
+
+## Stack
+
+Next.js (App Router) · TypeScript · Tailwind · shadcn/ui · JSON-Persistenz

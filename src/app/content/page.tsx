@@ -42,7 +42,7 @@ export default function ContentPage() {
     <div className="animate-rise space-y-5">
       <PageHeader
         title="On-Page / Content Insights"
-        description="Paste Content oder eine URL-Referenz — lokale Heuristiken für Länge, Struktur und Lesbarkeit."
+        description="Paste Content oder eine URL — bei URL wird die Seite live gefetcht und lokal analysiert."
       />
 
       <Panel title="Inhalt analysieren">
@@ -67,8 +67,8 @@ export default function ContentPage() {
                   domainId: domain.id,
                   source: source || "paste",
                   text,
-                }).then((s) => {
-                  if (s) toast.success("Analyse gespeichert");
+                }).then((r) => {
+                  if (r.state) toast.success("Analyse gespeichert (live)");
                 });
               }}
             >

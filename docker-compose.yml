@@ -1,0 +1,20 @@
+services:
+  signal-grove:
+    build: .
+    ports:
+      - "${PORT:-43127}:43127"
+    environment:
+      PORT: "43127"
+      HOSTNAME: "0.0.0.0"
+      DATA_DIR: /data
+      SERPAPI_KEY: ${SERPAPI_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      PAGESPEED_API_KEY: ${PAGESPEED_API_KEY:-}
+    volumes:
+      - signal_grove_data:/data
+    restart: unless-stopped
+
+volumes:
+  signal_grove_data:

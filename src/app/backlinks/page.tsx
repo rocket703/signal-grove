@@ -55,7 +55,7 @@ export default function BacklinksPage() {
     <div className="animate-rise space-y-5">
       <PageHeader
         title="Backlinks / Authority"
-        description="Demo-Daten plus JSON-Import-Platzhalter — Extension Point für Ahrefs/Majestic-Connectoren."
+        description="Kein kostenloser Live-Backlink-Provider — Daten nur per JSON-Import / manuell. Keine Fake-„Live“-Zahlen."
       />
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -67,7 +67,7 @@ export default function BacklinksPage() {
       {links.length === 0 ? (
         <EmptyState
           title="Keine Backlinks"
-          description="Importiere JSON oder nutze die Demo-Domain mit vorgefüllten Referring Domains."
+          description="Keine Backlinks geladen. Importiere JSON von einem Provider-Export — Signal Grove erfindet keine Live-Links."
         />
       ) : (
         <Panel title="Referring Domains">
@@ -129,8 +129,8 @@ export default function BacklinksPage() {
                 const items = JSON.parse(json) as unknown[];
                 if (!Array.isArray(items)) throw new Error("Array erwartet");
                 void run({ action: "importBacklinks", domainId: domain.id, items }).then(
-                  (s) => {
-                    if (s) toast.success("Backlinks importiert");
+                  (r) => {
+                    if (r.state) toast.success("Backlinks importiert (manuell)");
                   }
                 );
               } catch {

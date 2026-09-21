@@ -65,13 +65,17 @@ export default function GeoPage() {
     <div className="animate-rise space-y-5">
       <PageHeader
         title="GEO / AI Visibility"
-        description="Wie erscheint die Marke in KI-Antworten? Prompt Library, Citation Likelihood, Wettbewerber in Answers."
+        description="Wie erscheint die Marke in KI-Antworten? Mit OPENAI_API_KEY: Live-Checks. Ohne Key: Demo/Mock, klar gekennzeichnet."
         actions={
           <Button
             disabled={refreshing || !prompts.length}
             onClick={() => {
-              void run({ action: "refreshGeo", domainId: domain.id }).then((s) => {
-                if (s) toast.success("GEO Refresh (Mock) abgeschlossen");
+              void run({ action: "refreshGeo", domainId: domain.id }).then((r) => {
+                if (r.state) {
+                  const mode = r.meta?.mode || "mock";
+                  if (mode === "live") toast.success(r.meta?.note || "Live-GEO aktualisiert");
+                  else toast.message(r.meta?.note || "Demo/Mock-GEO (kein OpenAI-Key)");
+                }
               });
             }}
           >
@@ -111,8 +115,8 @@ export default function GeoPage() {
               domainId: domain.id,
               prompt,
               engine,
-            }).then((s) => {
-              if (s) {
+            }).then((r) => {
+              if (r.state) {
                 toast.success("Prompt hinzugefügt");
                 setPrompt("");
               }
@@ -150,7 +154,7 @@ export default function GeoPage() {
       ) : (
         <Panel
           title="Prompt Results"
-          description="Demo + Mock-Refresh. Später: echte Engine-Connectoren via OPENAI_API_KEY / Provider-APIs."
+          description="Live mit OPENAI_API_KEY. Ohne Key bleibt Refresh Demo/Mock und wird so gelabelt."
         >
           <Table>
             <TableHeader>

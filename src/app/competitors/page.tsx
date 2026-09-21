@@ -103,8 +103,8 @@ export default function CompetitorsPage() {
               domainId: domain.id,
               hostname,
               label: label || undefined,
-            }).then((s) => {
-              if (s) {
+            }).then((r) => {
+              if (r.state) {
                 toast.success("Competitor hinzugefügt");
                 setHostname("");
                 setLabel("");

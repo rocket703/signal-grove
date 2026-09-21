@@ -52,13 +52,15 @@ export default function AuditPage() {
     <div className="animate-rise space-y-5">
       <PageHeader
         title="Technisches SEO Audit"
-        description="Leichtgewichtiger Homepage-Check (Live-Fetch wenn möglich, sonst Simulation) mit Severity und Fix-Hinweisen."
+        description="Leichtgewichtiger Homepage-Check per echtem HTTP-Fetch: robots, title, meta, H1, canonical, OG, Sitemap-Hinweis, Ladezeit (optional PageSpeed)."
         actions={
           <Button
             disabled={refreshing}
             onClick={() => {
-              void run({ action: "runAudit", domainId: domain.id }).then((s) => {
-                if (s) toast.success("Audit abgeschlossen");
+              void run({ action: "runAudit", domainId: domain.id }).then((r) => {
+                if (r.state) {
+                  toast.success(r.meta?.note || "Live-Audit abgeschlossen");
+                }
               });
             }}
           >
@@ -70,7 +72,7 @@ export default function AuditPage() {
       {!audit ? (
         <EmptyState
           title="Noch kein Audit"
-          description="Starte den ersten Lauf. Bei blockiertem Netz nutzt Signal Grove eine klare Simulation statt leerer Ergebnisse."
+          description="Starte den ersten Lauf. Findings stammen aus dem echten HTML der Domain — bei Fetch-Fehler wird ehrlich fehlgeschlagen, nicht simuliert."
           action={
             <Button
               disabled={refreshing}

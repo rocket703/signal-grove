@@ -9,9 +9,8 @@ const STORE_FILE = "store.json";
 let writeQueue: Promise<void> = Promise.resolve();
 
 export function getDataDir(): string {
-  return process.env.SEOGEO_DATA_DIR
-    ? path.resolve(process.env.SEOGEO_DATA_DIR)
-    : DEFAULT_DATA_DIR;
+  const fromEnv = process.env.DATA_DIR || process.env.SEOGEO_DATA_DIR;
+  return fromEnv ? path.resolve(fromEnv) : DEFAULT_DATA_DIR;
 }
 
 function storePath(): string {
