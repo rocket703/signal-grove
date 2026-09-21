@@ -29,6 +29,7 @@ export default function BacklinksPage() {
   const [json, setJson] = useState(
     '[\n  {"referringDomain":"example.com","dr":55,"anchor":"Marke","status":"new"}\n]'
   );
+  const [csv, setCsv] = useState("");
 
   if (loading) return <LoadingBlock />;
   if (error) return <ErrorBanner message={error} onRetry={() => void reload()} />;
@@ -39,12 +40,13 @@ export default function BacklinksPage() {
     return (
       <EmptyState
         title="Backlinks"
-        description="Authority-Panel mit Referring Domains, DR-ähnlichem Score und New/Lost."
+        description="Authority-Panel — Import aus Google Search Console (CSV) oder JSON."
       />
     );
   }
 
   const links = domainBacklinks(state, domain.id);
+  const uniqueDomains = new Set(links.map((l) => l.referringDomain)).size;
   const avgDr = links.length
     ? Math.round(links.reduce((a, b) => a + b.dr, 0) / links.length)
     : 0;
@@ -55,28 +57,67 @@ export default function BacklinksPage() {
     <div className="animate-rise space-y-5">
       <PageHeader
         title="Backlinks / Authority"
-        description="Kein kostenloser Live-Backlink-Provider — Daten nur per JSON-Import / manuell. Keine Fake-„Live“-Zahlen."
+        description="GSC-CSV oder JSON importieren. Kein Live-Crawler — DR in der Tabelle ist nur ein Proxy, kein Ahrefs-DR."
       />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatTile label="Referring Domains" value={links.length} />
-        <StatTile label="Ø DR" value={avgDr} hint="Demo-Score" />
+        <StatTile label="Links" value={links.length} hint={`${uniqueDomains} Domains`} />
+        <StatTile label="Ø Score" value={avgDr} hint="Proxy, kein echter DR" />
         <StatTile label="New / Lost" value={`${neu} / ${lost}`} />
       </div>
+
+      <Panel
+        title="Google Search Console CSV"
+        description="Export „Latest links“ oder „Top linking sites“ hier einfügen oder als Datei wählen. Ersetzt die bisherigen Backlinks dieser Domain."
+      >
+        <input
+          type="file"
+          accept=".csv,text/csv"
+          className="mb-3 block w-full text-sm"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => setCsv(String(reader.result || ""));
+            reader.readAsText(file);
+          }}
+        />
+        <Textarea
+          className="min-h-36 font-mono text-xs"
+          placeholder="CSV-Inhalt einfügen (inkl. Header-Zeile)…"
+          value={csv}
+          onChange={(e) => setCsv(e.target.value)}
+        />
+        <div className="mt-3 flex justify-end gap-2">
+          <Button
+            disabled={refreshing || !csv.trim()}
+            onClick={() => {
+              void run({ action: "importGscCsv", domainId: domain.id, csv }).then((r) => {
+                if (r.state) {
+                  toast.success(r.meta?.note || "GSC-CSV importiert");
+                  setCsv("");
+                }
+              });
+            }}
+          >
+            GSC-CSV importieren
+          </Button>
+        </div>
+      </Panel>
 
       {links.length === 0 ? (
         <EmptyState
           title="Keine Backlinks"
-          description="Keine Backlinks geladen. Importiere JSON von einem Provider-Export — Signal Grove erfindet keine Live-Links."
+          description="Importiere den GSC-Export oben — z. B. startplatzboerse.com-Latest links-….csv"
         />
       ) : (
-        <Panel title="Referring Domains">
+        <Panel title={`Referring Domains (${uniqueDomains})`}>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Domain</TableHead>
-                <TableHead>DR</TableHead>
-                <TableHead>Anchor</TableHead>
+                <TableHead>Score</TableHead>
+                <TableHead>Anchor / Ziel</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last seen</TableHead>
               </TableRow>
@@ -89,7 +130,7 @@ export default function BacklinksPage() {
                     <div className="max-w-xs truncate text-xs text-muted-foreground">{l.url}</div>
                   </TableCell>
                   <TableCell>{l.dr}</TableCell>
-                  <TableCell>{l.anchor}</TableCell>
+                  <TableCell className="max-w-xs truncate">{l.anchor}</TableCell>
                   <TableCell>
                     <Badge
                       variant="secondary"
@@ -117,12 +158,13 @@ export default function BacklinksPage() {
         description='Array von Objekten mit referringDomain, dr, anchor, url, status ("active"|"new"|"lost").'
       >
         <Textarea
-          className="min-h-32 font-mono text-xs"
+          className="min-h-28 font-mono text-xs"
           value={json}
           onChange={(e) => setJson(e.target.value)}
         />
         <div className="mt-3 flex justify-end">
           <Button
+            variant="outline"
             disabled={refreshing}
             onClick={() => {
               try {
@@ -130,7 +172,7 @@ export default function BacklinksPage() {
                 if (!Array.isArray(items)) throw new Error("Array erwartet");
                 void run({ action: "importBacklinks", domainId: domain.id, items }).then(
                   (r) => {
-                    if (r.state) toast.success("Backlinks importiert (manuell)");
+                    if (r.state) toast.success(r.meta?.note || "Backlinks importiert");
                   }
                 );
               } catch {
@@ -138,7 +180,7 @@ export default function BacklinksPage() {
               }
             }}
           >
-            Importieren
+            JSON importieren
           </Button>
         </div>
       </Panel>

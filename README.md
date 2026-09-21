@@ -20,7 +20,20 @@ Dann im **Browser deines Laptops**: [http://127.0.0.1:43127](http://127.0.0.1:43
 | Audit / Content | Immer echter HTTP-Fetch |
 | Keywords | Live mit `SERPAPI_KEY`, sonst ehrliches Mock |
 | GEO | Live mit `OPENAI_API_KEY`, sonst ehrliches Mock |
-| Backlinks | Nur JSON-Import / manuell |
+| Backlinks | GSC-CSV („Latest links“ / „Top linking sites“) oder JSON — kein Live-Crawler |
+
+## Backlinks aus Google Search Console
+
+1. In GSC → Links → **Latest links** (oder Top linking sites) → CSV exportieren  
+2. App laufen lassen (`npm run dev`), dann entweder:
+   - **Backlinks**-Seite → Datei wählen / CSV einfügen → **GSC-CSV importieren**, oder
+   - CLI (Server muss laufen):
+
+```bash
+npm run backlinks:gsc -- "/home/dustin/Downloads/startplatzboerse.com-Latest links-2026-09-21.csv"
+```
+
+GSC liefert keinen Domain-Rating — der Score in der Tabelle ist nur ein Proxy.
 
 ## Docker
 
