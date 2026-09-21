@@ -22,6 +22,14 @@ export default defineConfig({
         "@": path.join(root, "src"),
       },
     },
+    server: {
+      // Both localhost and 127.0.0.1 must hydrate (Try Live / mixed hostnames)
+      allowedHosts: true,
+      hmr: {
+        // Let the browser reuse whatever host it opened (localhost vs 127.0.0.1)
+        clientPort: Number(process.env.PORT) || 43127,
+      },
+    },
   },
   adapter: node({
     mode: "standalone",
